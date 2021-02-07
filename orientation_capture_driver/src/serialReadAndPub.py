@@ -10,7 +10,7 @@
 import rospy
 import time
 from SerialManagerClass import SerialManager 
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import QuaternionStamped
 
 # define global variables
 bno055Topic = "bno055_quat"
@@ -72,7 +72,7 @@ def main():
     rospy.loginfo("bno055_ros_driver_node initialized")
 
     # create publisher object
-    quatPub = rospy.Publisher(bno055Topic, Quaternion, queue_size=1)
+    quatPub = rospy.Publisher(bno055Topic, QuaternionStamped, queue_size=1)
 
     # try to open serial port
     res = serObj.open()
@@ -93,15 +93,15 @@ def main():
                 continue
             else:
                 status, quatDict = procSerialData(lineToProc)
-                print(quatDict) 
                 if(status):
                     try:
                         # construct Quaternion message
-                        quatMessage = Quaternion()
-                        quatMessage.x = float(quatDict["X"])
-                        quatMessage.y = float(quatDict["Y"])
-                        quatMessage.z = float(quatDict["Z"])
-                        quatMessage.w = float(quatDict["W"])
+                        quatMessage = QuaternionStamped()
+                        quatMessage.header.stamp = rospy.Time.now()
+                        quatMessage.quaternion.x = float(quatDict["X"])
+                        quatMessage.quaternion.y = float(quatDict["Y"])
+                        quatMessage.quaternion.z = float(quatDict["Z"])
+                        quatMessage.quaternion.w = float(quatDict["W"])
 
                         # publish data
                         quatPub.publish(quatMessage)

@@ -1,0 +1,5 @@
+<launch>
+	<node name="find_obj_xyz" pkg="kinect_vision_target_cap" type="find_obj_xyz.py" />
+	<node name="serialReadAndPub" pkg="orientation_capture_driver" type="serialReadAndPub.py" />
+	<node name="fuse_kinect_bno" pkg="kinect_bno_fusion" type="fuse_kinect_bno.py" />
+</launch>

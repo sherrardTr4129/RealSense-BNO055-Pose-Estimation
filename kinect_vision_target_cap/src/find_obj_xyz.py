@@ -5,13 +5,15 @@
 # Since: 02/06/2021
 # Description: This script extracts synced RGB and Depth frames from 
 #              the kinect and attempts to locate a given vision target.
+#              if the vision target is located, the XYZ coordinates are
+#              scaled and published.
 
 import freenect
 import cv2
 import numpy as np
 import frame_convert2
 import rospy
-from geometry_msgs.msg import Point32
+from geometry_msgs.msg import PointStamped
 
 cv2.namedWindow('Depth')
 cv2.namedWindow('Video')
@@ -141,7 +143,7 @@ def main():
     rospy.loginfo("kinect_find_xyz node initialized")
 
     # create Point32 publisher
-    pointPub = rospy.Publisher(pointPubTopic, Point32, queue_size=1)
+    pointPub = rospy.Publisher(pointPubTopic, PointStamped, queue_size=1)
 
     while (not rospy.is_shutdown()):
         # grab frames from kinect
@@ -168,10 +170,11 @@ def main():
             (mappedX, mappedY), depthAvgScaled = mapCircleCoordinates(numpyDepth, (x,y), average)
 
             # create Point32 message and publish
-            pointMessage = Point32()
-            pointMessage.x = mappedX
-            pointMessage.y = mappedY
-            pointMessage.z = depthAvgScaled
+            pointMessage = PointStamped()
+            pointMessage.header.stamp = rospy.Time.now()
+            pointMessage.point.x = mappedX
+            pointMessage.point.y = mappedY
+            pointMessage.point.z = depthAvgScaled
             pointPub.publish(pointMessage)
 
         cv2.imshow('Depth', numpyDepth)
