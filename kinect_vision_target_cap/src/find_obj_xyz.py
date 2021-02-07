@@ -45,6 +45,17 @@ def getRGB():
     return frame_convert2.video_cv(freenect.sync_get_video()[0])
 
 def threshColorImage(colorImg, lowerColorBound, upperColorBound):
+    """
+    This function takes a HSV image and two HSV color tuples and
+    returns a thresholded image. 
+
+    params:
+        colorImg (int8 HSV image): the HSV image to be thresholded
+        lowerColorBound (int,int,int): the lower color threshold bound
+        upperColorBound (int,int,int): the upper color threshold bound
+    returns:
+        threshedImg (uint8 image): a thresholded binary image
+    """
     threshedImage = cv2.inRange(colorImg, lowerColorBound, upperColorBound)
     return threshedImage
 
@@ -169,7 +180,7 @@ def main():
             # map circle coordinates to meters (approx)
             (mappedX, mappedY), depthAvgScaled = mapCircleCoordinates(numpyDepth, (x,y), average)
 
-            # create Point32 message and publish
+            # create PointStamped message and publish
             pointMessage = PointStamped()
             pointMessage.header.stamp = rospy.Time.now()
             pointMessage.point.x = mappedX
