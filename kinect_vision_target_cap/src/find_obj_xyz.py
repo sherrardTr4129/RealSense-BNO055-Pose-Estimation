@@ -10,14 +10,14 @@ import freenect
 import cv2
 import numpy as np
 import frame_convert2
-
-def nothing(x):
-    pass
+import rospy
+from geometry_msgs.msg import Point32
 
 cv2.namedWindow('Depth')
 cv2.namedWindow('Video')
 
 # define various global variables
+pointPubTopic = "kinectXYZPoint"
 lowerColorBound = (0, 187, 83)
 upperColorBound = (255, 255, 255)
 MIN_AREA = 100
@@ -30,7 +30,7 @@ def getDepth():
     returns:
         depth (uint8 frame): The depth image
     """
-    return frame_convert2.pretty_depth_cv(freenect.sync_get_depth()[0])
+    return frame_convert2.pretty_depth_cv(freenect.sync_get_depth(format=freenect.DEPTH_REGISTERED)[0])
 
 def getRGB():
     """
@@ -93,21 +93,57 @@ def findDepthAvg(depthImg, circle):
     radius=int(radius)
     circleRoi = depthImg[y-radius:y+radius, x-radius:x+radius]
 
-    # generate circle mask image from ROI
-    w = circleRoi.shape[0]
-    h = circleRoi.shape[1]
+    # grab circle ROI height and width
+    w = circleRoi.shape[1]
+    h = circleRoi.shape[0]
 
+    # create circle mask
     circleMask = np.zeros((w,h), circleRoi.dtype)
     cv2.circle(circleMask, (int(w/2), int(h/2)), radius, (255,255,255), -1)
 
+    # issolate circle ROI in depth image
     combined = cv2.bitwise_and(circleRoi, circleMask)
+
+    # compute average of non-black pixels on depth image
     nonZeroIndecies = np.where(combined != 0)[0]
     average = np.mean(combined[nonZeroIndecies])
-    print(average)
-    return combined
+
+    return average
+
+def mapCircleCoordinates(numpyDepthFrame, circleCenter, depthAvg):
+    # grab shape of frame
+    w = numpyDepthFrame.shape[1]
+    h = numpyDepthFrame.shape[0]
+
+    # find image center
+    imgCx = int(w/2)
+    imgCy = int(h/2)
+
+    # extract center of circle
+    (circleX, circleY) = circleCenter
+
+    # map circle center to new coordinate system
+    circleCenterMappedX = circleX - imgCx
+    circleCenterMappedY = -(circleY - imgCy)
+
+    # scale circle coordinates to unit length
+    circleScaledX = circleCenterMappedX / (imgCx)
+    circleScaledY = circleCenterMappedY / (imgCy)
+    circleScaled = (circleScaledX, circleScaledY)
+
+    # scale depth average
+    depthAvgScaled = depthAvg / 255
+    return circleScaled, depthAvgScaled
 
 def main():
-    while 1:
+    # start node
+    rospy.init_node("kinect_find_xyz")
+    rospy.loginfo("kinect_find_xyz node initialized")
+
+    # create Point32 publisher
+    pointPub = rospy.Publisher(pointPubTopic, Point32, queue_size=1)
+
+    while (not rospy.is_shutdown()):
         # grab frames from kinect
         depthImage = getDepth()
         rgbImage = getRGB()
@@ -116,11 +152,28 @@ def main():
         numpyRGB = np.array(rgbImage)
         numpyDepth = np.array(depthImage)
 
+        # find min enclosing circle 
         status, circle = findMinEnclosingCircle(numpyRGB)
+
         if(status):
+            # draw circles if they are found
             (x,y), radius = circle
             cv2.circle(numpyRGB, (int(x), int(y)), int(radius), (0,255,0),2)
-            numpyDepth = findDepthAvg(numpyDepth, circle)
+
+            #find average depth of the pixels within the circle
+            average = findDepthAvg(numpyDepth, circle)
+            print(numpyDepth.shape[0])
+
+            # map circle coordinates to meters (approx)
+            (mappedX, mappedY), depthAvgScaled = mapCircleCoordinates(numpyDepth, (x,y), average)
+
+            # create Point32 message and publish
+            pointMessage = Point32()
+            pointMessage.x = mappedX
+            pointMessage.y = mappedY
+            pointMessage.z = depthAvgScaled
+            pointPub.publish(pointMessage)
+
         cv2.imshow('Depth', numpyDepth)
         cv2.imshow('Video', numpyRGB)
         if(cv2.waitKey(1) & 0xFF == ord('q')):
