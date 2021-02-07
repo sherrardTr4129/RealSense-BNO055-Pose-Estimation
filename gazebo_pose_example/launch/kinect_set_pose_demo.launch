@@ -1,0 +1,17 @@
+<launch>
+	<!-- Bring up Gazebo -->
+	<arg name="model" />
+	<param name="robot_description" textfile="$(find gazebo_pose_example)/urdf/box.urdf" /> 
+	<arg name="use_gui" default="true"/>
+	<include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="paused" value="false" />
+		<arg name="gui" value="$(arg use_gui)" />
+	</include>
+
+	<node name="model_spawner" pkg="gazebo_ros" type="spawn_model" output="screen" args="-param /robot_description -urdf -model simpleBox" />
+	<node name="set_gazebo_pose" pkg="gazebo_pose_example" type="set_gazebo_pose.py" />
+
+	
+</launch>
+
+
