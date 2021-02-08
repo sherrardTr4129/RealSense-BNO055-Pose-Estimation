@@ -60,6 +60,18 @@ def threshColorImage(colorImg, lowerColorBound, upperColorBound):
     return threshedImage
 
 def findMinEnclosingCircle(frame):
+    """
+    This function finds a circle that encloses the largest contour
+    in a given image that is over a given size of MIN_AREA. If a circle is found,
+    a True status boolean is returned, along with the circle's center coordinates and
+    radius.
+
+    params:
+        frame (uint8 image): the RGB image from the kinect to process
+    returns:
+        status, circle (boool, ((x,y), radius)): the status indicating if a circle was found
+                                                 and the detected circle center point and radius
+    """
     # blur image
     blurKernel = (11, 11)
     blurred = cv2.GaussianBlur(frame, blurKernel, 0)
@@ -99,6 +111,17 @@ def findMinEnclosingCircle(frame):
         return False, defaultCircle
 
 def findDepthAvg(depthImg, circle):
+    """
+    This function takes a given depth image from the kinect and the
+    detected circle center coordinates and radius and finds the average depth
+    value of the constructed circle mask.
+
+    params:
+        depthImg (uint8 image): The depth image from the kinect
+        circle ((int x, int y), int radius): the center point and radius of the detected circle
+    returns:
+        averageDepth (int): the average depth value over the constructed circle mask
+    """
     # construct ROI
     (x,y), radius = circle
     x=int(x)
@@ -124,6 +147,20 @@ def findDepthAvg(depthImg, circle):
     return average
 
 def mapCircleCoordinates(numpyDepthFrame, circleCenter, depthAvg):
+    """
+    This function maps the detected circle center and average depth value to psudeo
+    real world values. This is done using the depth image geometry and arbritary scaling 
+    values. 
+
+    params:
+        numpyDepthFrame (uint8 image): the depth image from the kinect
+        circleCenter (int x, int y): the center of the detected circle
+        depthAvg (int avg): the average depth image value over the circle mask
+    returns:
+        circleScaled, depthAvgScaled ((int x, int y), int avg): the shifted and scaled circle
+                                                                center coordinates, and the scaled
+                                                                average depth value.
+    """
     # grab shape of frame
     w = numpyDepthFrame.shape[1]
     h = numpyDepthFrame.shape[0]
@@ -188,6 +225,7 @@ def main():
             pointMessage.point.z = depthAvgScaled
             pointPub.publish(pointMessage)
 
+        # display images
         cv2.imshow('Depth', numpyDepth)
         cv2.imshow('Video', numpyRGB)
         if(cv2.waitKey(1) & 0xFF == ord('q')):
