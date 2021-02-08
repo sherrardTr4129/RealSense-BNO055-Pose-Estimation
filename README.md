@@ -35,3 +35,15 @@ sudo apt install python-serial
 
 ## Usage
 This repository contains three distinct ROS packages that are described in more detail below. 
+
+
+To launch both the kinect position capture node, BNO055 serial ROS driver, and sensor data stream fusion node, run the following in a terminal:
+```bash
+roslaunch kinect_bno_fusion kinect_bno_fusion_bringup.launch
+```
+
+Once these nodes are up and running successfully, you can launch the gazebo visualization tool by running the following in a terminal:
+```bash
+roslaunch gazebo_pose_example kinect_set_pose_demo.launch
+```
+This will launch a Gazebo instance, in which a cube will be instantiated that will have it's Pose set by the Pose generated from the sensor data fusion node that was launched in the last step.
