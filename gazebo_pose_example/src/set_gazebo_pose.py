@@ -13,6 +13,7 @@ from geometry_msgs.msg import Pose
 
 # misc variables
 poseTopic = "fused_BNO_Kinect_Pose"
+gazeboServiceName = "/gazebo/set_model_state"
 
 def poseCallback(msg):
     """
@@ -26,6 +27,9 @@ def poseCallback(msg):
     returns;
         None
     """
+    # wait fo gazebo to come up
+    rospy.wait_for_service(gazeboServiceName)
+
     # constuct modelState message from recieved pose
     stateMsg = ModelState()
     stateMsg.model_name = "simpleBox"
@@ -39,7 +43,7 @@ def poseCallback(msg):
 
     # attempt to make ROS service call to change gazebo model Pose
     try:
-        setModelState = rospy.ServiceProxy("/gazebo/set_model_state", SetModelState)
+        setModelState = rospy.ServiceProxy(gazeboServiceName, SetModelState)
         response = setModelState(stateMsg)
     except rospy.ServiceException, err:
         rospy.logerr("service call failed: %s" % err)
