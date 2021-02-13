@@ -9,13 +9,15 @@
 
 import rospy
 import time
+import math
 from SerialManagerClass import SerialManager 
 from geometry_msgs.msg import QuaternionStamped
+from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_multiply
 
 # define global variables
 bno055Topic = "bno055_quat"
 port = "/dev/ttyACM0"
-baud = 57600
+baud = 9600
 serObj = SerialManager(port, baud)
 sleepTime = 1
 
@@ -33,14 +35,12 @@ def procSerialData(RxText):
         status (bool): a boolean indicating the status of the data extraction
     """
 
-    print(RxText.isalnum())
     status = True
     # try to extract substring indecies.
     try:
-        Xind = RxText.index('X')
+        Rind = RxText.index('R')
+        Pind = RxText.index('P')
         Yind = RxText.index('Y')
-        Zind = RxText.index('Z')
-        Wind = RxText.index('W')
 
     except ValueError, err:
         rospy.logerr("no substring found for quaternion component: %s" % err)
@@ -48,20 +48,18 @@ def procSerialData(RxText):
 
     if(status):
         # grab actual substrings
-        Xdata = RxText[Xind+1:Yind]
-        Ydata = RxText[Yind+1:Zind]
-        Zdata = RxText[Zind+1:Wind]
-        Wdata = RxText[Wind+1:]
+        Rdata = RxText[Rind+1:Pind]
+        Pdata = RxText[Pind+1:Yind]
+        Ydata = RxText[Yind+1:]
 
         # remove whitespace
-        Xdata.strip()
+        Rdata.strip()
+        Pdata.strip()
         Ydata.strip()
-        Zdata.strip()
-        Wdata.strip()
         
         # construct quatDict
-        quatDict = {"X":Xdata, "Y":Ydata, "Z":Zdata, "W":Wdata}
-        return status, quatDict
+        rpyDict = {"R":Rdata, "P":Pdata, "Y":Ydata}
+        return status, rpyDict
 
     else:
         return status, dict()
@@ -82,6 +80,7 @@ def main():
     time.sleep(sleepTime)
 
     if(not res):
+        rospy.logerr("could not open serial device! Double check port and baud settings ")
         return -1
 
     # start publishing data
@@ -92,18 +91,52 @@ def main():
             if(len(lineToProc) == 0):
                 continue
             else:
-                status, quatDict = procSerialData(lineToProc)
+                status, rpyDict = procSerialData(lineToProc)
                 if(status):
+                    # extract rpy data
+                    roll = float(rpyDict["R"])
+                    pitch = float(rpyDict["P"])
+                    yaw = float(rpyDict["Y"])
+
+                    # convert to radians
+                    roll = roll * (math.pi/180)
+                    pitch = pitch * (math.pi/180)
+                    yaw = yaw * (math.pi/180)
+
+                    # convert to quaternion
+                    quaternion = quaternion_from_euler(roll, pitch, yaw)
+
+                    # rotate pitch by -pi/2
+                    pitchRotateQuat = quaternion_from_euler(0, -math.pi/2, 0)
+
+                    # perform quaternion multiplication
+                    tempQuat = quaternion_multiply(quaternion, pitchRotateQuat)
+
+                    # move back to euler 
+                    rpyNew = euler_from_quaternion(tempQuat)
+                    newRoll = rpyNew[0]
+                    newPitch = rpyNew[1]
+                    newYaw = rpyNew[2]
+
+                    # swap roll and yaw
+                    tempRoll = newRoll
+                    newRoll = newYaw
+                    newYaw = tempRoll
+
+                    # back to quaternion
+                    newQuat = quaternion_from_euler(newRoll, newPitch, newYaw)
+
                     try:
                         # construct Quaternion message
                         quatMessage = QuaternionStamped()
                         quatMessage.header.stamp = rospy.Time.now()
-                        quatMessage.quaternion.x = float(quatDict["X"])
-                        quatMessage.quaternion.y = float(quatDict["Y"])
-                        quatMessage.quaternion.z = float(quatDict["Z"])
-                        quatMessage.quaternion.w = float(quatDict["W"])
+                        quatMessage.quaternion.x = newQuat[0]
+                        quatMessage.quaternion.y = newQuat[1]
+                        quatMessage.quaternion.z = newQuat[2]
+                        quatMessage.quaternion.w = newQuat[3]
 
                         # publish data
+                        print(quatMessage)
                         quatPub.publish(quatMessage)
                     except ValueError, err:
                         rospy.logerr("could not extract all quaternion components from serial string: %s" % err)
