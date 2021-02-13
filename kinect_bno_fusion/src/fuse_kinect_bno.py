@@ -20,6 +20,7 @@ slop_time = 0.3
 posePub = rospy.Publisher(poseTopic, Pose, queue_size=1)
 
 def gotStreams(xyz_point, bno_quat):
+    # create new pose object
     new_Pose = Pose()
 
     # populate pose position
