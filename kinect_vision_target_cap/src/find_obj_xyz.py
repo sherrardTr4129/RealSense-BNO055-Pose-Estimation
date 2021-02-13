@@ -22,6 +22,8 @@ cv2.namedWindow('Video')
 pointPubTopic = "kinectXYZPoint"
 lowerColorBound = (0, 187, 83)
 upperColorBound = (255, 255, 255)
+XYScaleFactor = 20
+ZScaleFactor = 30
 MIN_AREA = 100
 
 def getDepth():
@@ -137,7 +139,16 @@ def findDepthAvg(depthImg, circle):
     circleMask = np.zeros((w,h), circleRoi.dtype)
     cv2.circle(circleMask, (int(w/2), int(h/2)), radius, (255,255,255), -1)
 
-    # issolate circle ROI in depth image
+    # grab ROI and mask shape
+    circleROIShape = circleRoi.shape
+    circleMaskShape = circleMask.shape
+
+    # check if the mask and ROI are the same shape
+    if(circleROIShape != circleMaskShape):
+        rospy.logerr("ROI and mask are not the same size!")
+        return -1
+
+    # isolate circle ROI in depth image
     combined = cv2.bitwise_and(circleRoi, circleMask)
 
     # compute average of non-black pixels on depth image
@@ -146,7 +157,7 @@ def findDepthAvg(depthImg, circle):
 
     return average
 
-def mapCircleCoordinates(numpyDepthFrame, circleCenter, depthAvg):
+def mapCircleCoordinates(numpyDepthFrame, circleCenter, depthAvg, XYScalingFactor, ZScalingFactor):
     """
     This function maps the detected circle center and average depth value to psudeo
     real world values. This is done using the depth image geometry and arbritary scaling 
@@ -156,6 +167,8 @@ def mapCircleCoordinates(numpyDepthFrame, circleCenter, depthAvg):
         numpyDepthFrame (uint8 image): the depth image from the kinect
         circleCenter (int x, int y): the center of the detected circle
         depthAvg (int avg): the average depth image value over the circle mask
+        XYScalingFactor (int): The number to scale the normalized X,Y coordinates by
+        ZScalingFactor (int): The number to scale the normalized Z coordinate by
     returns:
         circleScaled, depthAvgScaled ((int x, int y), int avg): the shifted and scaled circle
                                                                 center coordinates, and the scaled
@@ -179,10 +192,18 @@ def mapCircleCoordinates(numpyDepthFrame, circleCenter, depthAvg):
     # scale circle coordinates to unit length
     circleScaledX = circleCenterMappedX / (imgCx)
     circleScaledY = circleCenterMappedY / (imgCy)
+
+    # scale up by sclaing factor
+    circleScaledX = circleScaledX * XYScalingFactor
+    circleScaledY = circleScaledY * XYScalingFactor
     circleScaled = (circleScaledX, circleScaledY)
 
-    # scale depth average
+    # scale depth average to range of 0-1
     depthAvgScaled = depthAvg / 255
+
+    # scale depth by scaling factor
+    depthAvgScaled = depthAvgScaled * ZScalingFactor
+
     return circleScaled, depthAvgScaled
 
 def main():
@@ -212,10 +233,13 @@ def main():
 
             #find average depth of the pixels within the circle
             average = findDepthAvg(numpyDepth, circle)
-            print(numpyDepth.shape[0])
+
+            # skip this loop if averaging failed
+            if(average == -1):
+                continue
 
             # map circle coordinates to meters (approx)
-            (mappedX, mappedY), depthAvgScaled = mapCircleCoordinates(numpyDepth, (x,y), average)
+            (mappedX, mappedY), depthAvgScaled = mapCircleCoordinates(numpyDepth, (x,y), average, XYScaleFactor, ZScaleFactor)
 
             # create PointStamped message and publish
             pointMessage = PointStamped()
