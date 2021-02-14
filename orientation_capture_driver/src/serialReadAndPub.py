@@ -100,40 +100,26 @@ def main():
 
                     # convert to radians
                     roll = roll * (math.pi/180)
-                    pitch = pitch * (math.pi/180)
-                    yaw = yaw * (math.pi/180)
-
-                    # convert to quaternion
-                    quaternion = quaternion_from_euler(roll, pitch, yaw)
-
-                    # rotate pitch by -pi/2
-                    pitchRotateQuat = quaternion_from_euler(0, -math.pi/2, 0)
-
-                    # perform quaternion multiplication
-                    tempQuat = quaternion_multiply(quaternion, pitchRotateQuat)
-
-                    # move back to euler 
-                    rpyNew = euler_from_quaternion(tempQuat)
-                    newRoll = rpyNew[0]
-                    newPitch = rpyNew[1]
-                    newYaw = rpyNew[2]
-
-                    # swap roll and yaw
-                    tempRoll = newRoll
-                    newRoll = newYaw
-                    newYaw = tempRoll
+                    pitch = -1*pitch * (math.pi/180)
+                    yaw = -1*yaw * (math.pi/180)
 
                     # back to quaternion
-                    newQuat = quaternion_from_euler(newRoll, newPitch, newYaw)
+                    newQuat = quaternion_from_euler(roll, pitch, yaw)
 
                     try:
                         # construct Quaternion message
                         quatMessage = QuaternionStamped()
                         quatMessage.header.stamp = rospy.Time.now()
-                        quatMessage.quaternion.x = newQuat[0]
-                        quatMessage.quaternion.y = newQuat[1]
-                        quatMessage.quaternion.z = newQuat[2]
-                        quatMessage.quaternion.w = newQuat[3]
+                        qX = newQuat[0]
+                        qY = newQuat[1]
+                        qZ = newQuat[2]
+                        qW = newQuat[3]
+
+                        # make sure to swap x and z axis
+                        quatMessage.quaternion.z = qX
+                        quatMessage.quaternion.y = qY
+                        quatMessage.quaternion.x = qZ
+                        quatMessage.quaternion.w = qW
 
                         # publish data
                         print(quatMessage)
