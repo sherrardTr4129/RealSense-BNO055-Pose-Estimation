@@ -14,6 +14,7 @@ import numpy as np
 import frame_convert2
 import rospy
 from geometry_msgs.msg import PointStamped
+from WindowedAverage import MovingWindowAverage
 
 cv2.namedWindow('Depth')
 cv2.namedWindow('Video')
@@ -23,8 +24,9 @@ pointPubTopic = "kinectXYZPoint"
 lowerColorBound = (0, 187, 83)
 upperColorBound = (255, 255, 255)
 XYScaleFactor = 20
-ZScaleFactor = 30
+ZScaleFactor = 50
 MIN_AREA = 100
+WINDOW_SIZE = 3
 
 def getDepth():
     """
@@ -214,6 +216,11 @@ def main():
     # create Point32 publisher
     pointPub = rospy.Publisher(pointPubTopic, PointStamped, queue_size=1)
 
+    # create windowed averager objects
+    xAverager = MovingWindowAverage(WINDOW_SIZE)
+    yAverager = MovingWindowAverage(WINDOW_SIZE)
+    zAverager = MovingWindowAverage(WINDOW_SIZE)
+
     while (not rospy.is_shutdown()):
         # grab frames from kinect
         depthImage = getDepth()
@@ -241,12 +248,18 @@ def main():
             # map circle coordinates to meters (approx)
             (mappedX, mappedY), depthAvgScaled = mapCircleCoordinates(numpyDepth, (x,y), average, XYScaleFactor, ZScaleFactor)
 
+            # try to remove noise from data points
+            smoothedX = xAverager.addAndProc(mappedX)
+            smoothedY = yAverager.addAndProc(mappedY)
+            smoothedZ = zAverager.addAndProc(depthAvgScaled)
+            rospy.logerr(depthAvgScaled)
+
             # create PointStamped message and publish
             pointMessage = PointStamped()
             pointMessage.header.stamp = rospy.Time.now()
-            pointMessage.point.x = mappedX
-            pointMessage.point.y = mappedY
-            pointMessage.point.z = depthAvgScaled
+            pointMessage.point.x = smoothedX
+            pointMessage.point.y = smoothedY
+            pointMessage.point.z = smoothedZ
             pointPub.publish(pointMessage)
 
         # display images
