@@ -12,7 +12,7 @@ The kinect position capture sub-system attempts to locate the vision target in a
 ![Kinect Sub-System Diagram](./documentation/images/kinectPosCapsubSystem.png)
 
 ### BNO055 Orientation Capture
-The BNO055 orientation capture sub-system attempts to determine the orientation of the vision target as a quaternion, and then wirelessly transmit said quaternion back to a base-station MCU. The base-station MCU then sends the quaternion to a ROS node running on a local computer via a serial interface. This ROS node processes the quaternion components and publishes it as a quaternionStamped message to the rest of the system. The overall sub-system block diagram, functional flowchart diagram, as well as a visual representation of the system can be seen in the figures below.
+The BNO055 orientation capture sub-system attempts to determine the orientation of the vision target as a quaternion, and then wirelessly transmit said quaternion back to a base-station MCU. The base-station MCU then sends the quaternion to a ROS node running on a local computer via a serial interface. This ROS node processes the quaternion components and publishes it as a quaternionStamped message to the rest of the system. All designs (mechanical, electrical and firmware) needed to construct the wirless orientation capture sub-system can be found [here](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/tree/main/orientation_capture_subsystem_hardware_and_firmware). The overall sub-system block diagram, functional flowchart diagram, as well as a visual representation of the system can be seen in the figures below.
 
 
 ![BNO055 Orientation Capture Sub-System Diagram](./documentation/images/wirelessBNODiagram.png)
