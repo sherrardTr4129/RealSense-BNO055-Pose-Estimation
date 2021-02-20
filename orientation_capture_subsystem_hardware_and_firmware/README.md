@@ -9,9 +9,13 @@ For this project, a PCB was designed containing all required hardware to read da
 
 ## Sensor Data Transmitter
 ![Wireless Data TX Real Picture](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/blob/main/documentation/images/wirelessDataTX.jpg)
+![Wireless Data TX Wiring Diagram](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/blob/main/documentation/images/wirelessTxDiagram.png)
+
+Please note that this diagram depicts the wireless data tranmission module in its operational state. More connections are required to flash the firmware to the device. These connections and the firmware flashing process will be outlined later in this readme.
 
 ## Sensor Data Reciever 
 ![Wireless Data RX Real Picture](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/blob/main/documentation/images/wirelessDataRX.jpg)
+![Wireless Data RX Wiring Diagram](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/blob/main/documentation/images/basestationDiagram.png)
 
 
 # Firmware
