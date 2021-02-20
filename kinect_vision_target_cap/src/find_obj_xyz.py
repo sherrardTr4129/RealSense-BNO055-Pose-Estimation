@@ -252,7 +252,9 @@ def main():
             smoothedX = xAverager.addAndProc(mappedX)
             smoothedY = yAverager.addAndProc(mappedY)
             smoothedZ = zAverager.addAndProc(depthAvgScaled)
-            rospy.logerr(depthAvgScaled)
+
+            if(np.isnan(depthAvgScaled)):
+                depthAvgScaled = 10.0
 
             # create PointStamped message and publish
             pointMessage = PointStamped()
