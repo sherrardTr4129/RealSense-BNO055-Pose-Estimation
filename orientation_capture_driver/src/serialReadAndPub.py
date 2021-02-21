@@ -17,7 +17,7 @@ from tf.transformations import quaternion_from_euler, euler_from_quaternion, qua
 # define global variables
 bno055Topic = "bno055_quat"
 port = "/dev/ttyACM0"
-baud = 9600
+baud = 115200
 serObj = SerialManager(port, baud)
 sleepTime = 1
 
