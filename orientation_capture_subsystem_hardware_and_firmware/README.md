@@ -33,7 +33,7 @@ The firmware flashing process for each of the board assemblies can be seen in ea
 Just a stub for now
 
 ## Sensor Data Reciever Firmware Flashing Procedure
-Just a stub for now
+The process for flashing the firmware for the reciever sub-system is the same as flashing any standard Arduino Uno. Just make sure you have all the NRF24 dependencies installed and compile and upload the firmware. 
 
 # Mechanical Hardware Designs 
 The mechanical hardware designs for both the vision target and the base station can be seen in the rendered images below. Note that both the these STL files are available in this repository. 
