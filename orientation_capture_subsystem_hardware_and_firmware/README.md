@@ -2,7 +2,15 @@
 This directory contains the hardware designs (mechanical and electrical) and firmware needed to construct the wireless orientation capture system used for more robust motion capture.
 
 # Overall System Specifications
-The table below outlines some basic specifications for the overall orientation capture sub-system.
+The table below outlines some basic specifications for the overall orientation capture sub-system:
+
+|                       Specification                       |                              Value                              |
+|:---------------------------------------------------------:|:---------------------------------------------------------------:|
+| Transmitter Range                                         | At least 5m (probably much more even at the NRF24_PA_LOW value) |
+| Transmitter Sub-System Current Consumption (steady state) | ~50mA                                                           |
+| Battery Life (Assuming 1Ah cell)                          | ~20 hours                                                       |
+| Transmitter Input Voltage (4 AA battery cell recommended) | 5V - 6V                                                         |
+| Overall System Data Frame Rate                            | ~30 FPS                                                         |
 
 # Electrical Hardware Designs
 For this project, a PCB was designed containing all required hardware to read data packets from the BNO055 sensor and transmit them wirelessly to a basestation, where they can be read in by the aforementioned ROS driver. The kiCAD project containng the schematic and board layout files can be found in the electricalHardware/wirelessOrientationSensorSystem directory in this repository. Please see below for a wiring diagram for both the base-station and wireless transmitter board and well as real pictures of each device. 
