@@ -36,4 +36,7 @@ Just a stub for now
 Just a stub for now
 
 # Mechanical Hardware Designs 
-Just a stub for now
+The mechanical hardware designs for both the vision target and the base station can be seen in the rendered images below. Note that both the these STL files are available in this repository. 
+
+![vision target](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/blob/main/documentation/images/visionTarget.PNG)
+![base station](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/blob/main/documentation/images/basestation.PNG)
