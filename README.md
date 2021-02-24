@@ -33,9 +33,11 @@ The wirelss orientation data reciever MCU serial ROS driver depends on the pyser
 sudo apt install python-serial
 ```
 
+### Arduino Firmware Dependencies
+Both the transmitter module and reciever module depend on the NRF24 library that can be obtained through the arduino IDE package manager. The transmitter module firmware also depends on the BNO055 sensor adafruit library and the adafruit unified sensor library (both can be obtained in the arduino IDE package manager. 
+
 ## Usage
 This repository contains three distinct ROS packages that are described in more detail below. 
-
 
 To launch both the kinect position capture node, BNO055 serial ROS driver, and sensor data stream fusion node, run the following in a terminal:
 ```bash
