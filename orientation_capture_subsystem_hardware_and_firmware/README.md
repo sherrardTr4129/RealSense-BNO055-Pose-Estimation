@@ -30,7 +30,13 @@ Please note that this diagram depicts the wireless data tranmission module in it
 The firmware flashing process for each of the board assemblies can be seen in each respective sub-section.
 
 ## Sensor Data Transmitter Firmware Flashing Procedure
-Just a stub for now
+As this board uses a unflashed ATMEGA328P processor, we must first flash the arduino bootloader to the device. The first step in this process is to wire an external arduino uno to the wireless data transmitter board in the configuration seen below. 
+
+![Bootloader Flash Wiring](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/blob/main/documentation/images/bootloaderFlash.png)
+
+From here, upload the arduino as ISP sketch to the arduino uno found under File->Examples->ArduinoISP. Once this successfully uploads to the arduino uno, the bootloader can be flashed. The first step in the flashing process is to change the programmer under Tools->Programmer from "AVRISP mkll" to "Arduino As ISP". From here, click Tools->Burn Bootloader. If the process works as expected, a "bootloader flashed successfully" message will appear in the status window of the IDE
+
+To flash the application level firmware onto the board, first disconnect the arduino uno from the wireless sensor transmitter board.
 
 ## Sensor Data Reciever Firmware Flashing Procedure
 The process for flashing the firmware for the reciever sub-system is the same as flashing any standard Arduino Uno. Just make sure you have all the NRF24 dependencies installed and compile and upload the firmware. 
