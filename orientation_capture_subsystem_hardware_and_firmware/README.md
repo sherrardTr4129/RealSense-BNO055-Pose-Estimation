@@ -36,7 +36,11 @@ As this board uses a unflashed ATMEGA328P processor, we must first flash the ard
 
 From here, upload the arduino as ISP sketch to the arduino uno found under File->Examples->ArduinoISP. Once this successfully uploads to the arduino uno, the bootloader can be flashed. The first step in the flashing process is to change the programmer under Tools->Programmer from "AVRISP mkll" to "Arduino As ISP". From here, click Tools->Burn Bootloader. If the process works as expected, a "bootloader flashed successfully" message will appear in the status window of the IDE
 
-To flash the application level firmware onto the board, first disconnect the arduino uno from the wireless sensor transmitter board.
+To flash the application level firmware onto the board, first disconnect the arduino uno from the wireless sensor transmitter board. From here, wire up the FTDI USB to TTL Serial converter to the wireless sensor transmitter as shown in the figure below.
+
+![Firmware Flash Wiring](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/blob/main/documentation/images/firmwareFlash.png)
+
+From here, open the BNO005_Capture_and_Transmit.ino file in the Arduino IDE. Change the programmer back to "AVRISP mkll" from "Arduino As ISP". Make sure the correct serial port and board type (arduino uno) are selected under the tools menu. From here, click the upload button, and the source should compile and be uploaded to the MCU. 
 
 ## Sensor Data Reciever Firmware Flashing Procedure
 The process for flashing the firmware for the reciever sub-system is the same as flashing any standard Arduino Uno. Just make sure you have all the NRF24 dependencies installed and compile and upload the firmware. 
