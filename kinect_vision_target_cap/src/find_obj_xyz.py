@@ -11,8 +11,8 @@
 import freenect
 import cv2
 import numpy as np
-import frame_convert2
 import rospy
+import pyrealsense2 as rs
 from geometry_msgs.msg import PointStamped
 from WindowedAverage import MovingWindowAverage
 
@@ -114,7 +114,7 @@ def findMinEnclosingCircle(frame):
     else:
         return False, defaultCircle
 
-def findDepthAvg(depthImg, circle):
+def findDepthAvg(depthImg, circle, depth_intrin):
     """
     This function takes a given depth image from the kinect and the
     detected circle center coordinates and radius and finds the average depth
@@ -131,31 +131,12 @@ def findDepthAvg(depthImg, circle):
     x=int(x)
     y=int(y)
     radius=int(radius)
-    circleRoi = depthImg[y-radius:y+radius, x-radius:x+radius]
 
-    # grab circle ROI height and width
-    w = circleRoi.shape[1]
-    h = circleRoi.shape[0]
+    average = depthImg.get_distance(x, y)
 
-    # create circle mask
-    circleMask = np.zeros((w,h), circleRoi.dtype)
-    cv2.circle(circleMask, (int(w/2), int(h/2)), radius, (255,255,255), -1)
-
-    # grab ROI and mask shape
-    circleROIShape = circleRoi.shape
-    circleMaskShape = circleMask.shape
-
-    # check if the mask and ROI are the same shape
-    if(circleROIShape != circleMaskShape):
-        rospy.logerr("ROI and mask are not the same size!")
-        return -1
-
-    # isolate circle ROI in depth image
-    combined = cv2.bitwise_and(circleRoi, circleMask)
-
-    # compute average of non-black pixels on depth image
-    nonZeroIndecies = np.where(combined != 0)[0]
-    average = np.mean(combined[nonZeroIndecies])
+    depth_point = rs.rs2_deproject_pixel_to_point(depth_intrin, [x, y], average)
+    
+    print(depth_point)
 
     return average
 
@@ -221,14 +202,57 @@ def main():
     yAverager = MovingWindowAverage(WINDOW_SIZE)
     zAverager = MovingWindowAverage(WINDOW_SIZE)
 
+    # Create a pipeline
+    pipeline = rs.pipeline()
+
+    # Create a config and configure the pipeline to stream
+    # different resolutions of color and depth streams
+    config = rs.config()
+
+    # Get device product line for setting a supporting resolution
+    pipeline_wrapper = rs.pipeline_wrapper(pipeline)
+    pipeline_profile = config.resolve(pipeline_wrapper)
+    device = pipeline_profile.get_device()
+    device_product_line = str(device.get_info(rs.camera_info.product_line))
+
+    # enable depth and color streams
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+
+    # Start streaming
+    profile = pipeline.start(config)
+
+    # Getting the depth sensor's depth scale (see rs-align example for explanation)
+    depth_sensor = profile.get_device().first_depth_sensor()
+    depth_scale = depth_sensor.get_depth_scale()
+
+    # Create an align object
+    # rs.align allows us to perform alignment of depth frames to others frames
+    # The "align_to" is the stream type to which we plan to align depth frames.
+    align_to = rs.stream.color
+    align = rs.align(align_to)
+
+
     while (not rospy.is_shutdown()):
-        # grab frames from kinect
-        depthImage = getDepth()
-        rgbImage = getRGB()
+        # grab frames from intel RealSense
+        frames = pipeline.wait_for_frames()
+        
+        # Align the depth frame to color frame
+        aligned_frames = align.process(frames)
+
+        # Get aligned frames
+        aligned_depth_frame = aligned_frames.get_depth_frame() # aligned_depth_frame is a 640x480 depth image
+        color_frame = aligned_frames.get_color_frame()
+
+        depth_intrin = aligned_depth_frame.profile.as_video_stream_profile().intrinsics
+
+        # Validate that both frames are valid
+        if not aligned_depth_frame or not color_frame:
+            continue
 
         # convert to numpy arrays
-        numpyRGB = np.array(rgbImage)
-        numpyDepth = np.array(depthImage)
+        numpyRGB = np.asanyarray(color_frame.get_data())
+        numpyDepth = np.asanyarray(aligned_depth_frame.get_data())
 
         # find min enclosing circle 
         status, circle = findMinEnclosingCircle(numpyRGB)
@@ -239,7 +263,8 @@ def main():
             cv2.circle(numpyRGB, (int(x), int(y)), int(radius), (0,255,0),2)
 
             #find average depth of the pixels within the circle
-            average = findDepthAvg(numpyDepth, circle)
+            average = findDepthAvg(aligned_depth_frame, circle, depth_intrin)
+            print(average)
 
             # skip this loop if averaging failed
             if(average == -1):
