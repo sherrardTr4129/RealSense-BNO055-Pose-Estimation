@@ -14,7 +14,6 @@ import numpy as np
 import rospy
 import pyrealsense2 as rs
 from geometry_msgs.msg import PointStamped
-from WindowedAverage import MovingWindowAverage
 
 cv2.namedWindow('Depth')
 cv2.namedWindow('Video')
@@ -114,17 +113,18 @@ def findMinEnclosingCircle(frame):
     else:
         return False, defaultCircle
 
-def findDepthAvg(depthImg, circle, depth_intrin):
+def circle_to_realworld(depthImg, circle, depth_intrin):
     """
-    This function takes a given depth image from the kinect and the
-    detected circle center coordinates and radius and finds the average depth
-    value of the constructed circle mask.
+    This function takes a given depth image from the Intel RealSense camera
+    and the center point of the detected circle, and de-projects it into real
+    world points. 
 
     params:
-        depthImg (uint8 image): The depth image from the kinect
+        depthImg (depth frame): The depth image from the Intel RealSense
         circle ((int x, int y), int radius): the center point and radius of the detected circle
+        depth_intrin (depth intrinsics): Intrinsic paramters of the depth frame.
     returns:
-        averageDepth (int): the average depth value over the constructed circle mask
+        real_world_point (int): the real world point of the detected circle 
     """
     # construct ROI
     (x,y), radius = circle
@@ -132,62 +132,14 @@ def findDepthAvg(depthImg, circle, depth_intrin):
     y=int(y)
     radius=int(radius)
 
-    average = depthImg.get_distance(x, y)
+    # get depth value of circle center
+    depth = depthImg.get_distance(x, y)
 
-    depth_point = rs.rs2_deproject_pixel_to_point(depth_intrin, [x, y], average)
-    
-    print(depth_point)
+    # perform deprojection
+    real_world_point = rs.rs2_deproject_pixel_to_point(depth_intrin, [x, y], depth)
 
-    return average
+    return real_world_point
 
-def mapCircleCoordinates(numpyDepthFrame, circleCenter, depthAvg, XYScalingFactor, ZScalingFactor):
-    """
-    This function maps the detected circle center and average depth value to psudeo
-    real world values. This is done using the depth image geometry and arbritary scaling 
-    values. 
-
-    params:
-        numpyDepthFrame (uint8 image): the depth image from the kinect
-        circleCenter (int x, int y): the center of the detected circle
-        depthAvg (int avg): the average depth image value over the circle mask
-        XYScalingFactor (int): The number to scale the normalized X,Y coordinates by
-        ZScalingFactor (int): The number to scale the normalized Z coordinate by
-    returns:
-        circleScaled, depthAvgScaled ((int x, int y), int avg): the shifted and scaled circle
-                                                                center coordinates, and the scaled
-                                                                average depth value.
-    """
-    # grab shape of frame
-    w = numpyDepthFrame.shape[1]
-    h = numpyDepthFrame.shape[0]
-
-    # find image center
-    imgCx = int(w/2)
-    imgCy = int(h/2)
-
-    # extract center of circle
-    (circleX, circleY) = circleCenter
-
-    # map circle center to new coordinate system
-    circleCenterMappedX = circleX - imgCx
-    circleCenterMappedY = -(circleY - imgCy)
-
-    # scale circle coordinates to unit length
-    circleScaledX = circleCenterMappedX / (imgCx)
-    circleScaledY = circleCenterMappedY / (imgCy)
-
-    # scale up by sclaing factor
-    circleScaledX = circleScaledX * XYScalingFactor
-    circleScaledY = circleScaledY * XYScalingFactor
-    circleScaled = (circleScaledX, circleScaledY)
-
-    # scale depth average to range of 0-1
-    depthAvgScaled = depthAvg / 255
-
-    # scale depth by scaling factor
-    depthAvgScaled = depthAvgScaled * ZScalingFactor
-
-    return circleScaled, depthAvgScaled
 
 def main():
     # start node
@@ -196,11 +148,6 @@ def main():
 
     # create Point32 publisher
     pointPub = rospy.Publisher(pointPubTopic, PointStamped, queue_size=1)
-
-    # create windowed averager objects
-    xAverager = MovingWindowAverage(WINDOW_SIZE)
-    yAverager = MovingWindowAverage(WINDOW_SIZE)
-    zAverager = MovingWindowAverage(WINDOW_SIZE)
 
     # Create a pipeline
     pipeline = rs.pipeline()
@@ -244,6 +191,7 @@ def main():
         aligned_depth_frame = aligned_frames.get_depth_frame() # aligned_depth_frame is a 640x480 depth image
         color_frame = aligned_frames.get_color_frame()
 
+        # get depth frame intrinsics
         depth_intrin = aligned_depth_frame.profile.as_video_stream_profile().intrinsics
 
         # Validate that both frames are valid
@@ -262,35 +210,24 @@ def main():
             (x,y), radius = circle
             cv2.circle(numpyRGB, (int(x), int(y)), int(radius), (0,255,0),2)
 
-            #find average depth of the pixels within the circle
-            average = findDepthAvg(aligned_depth_frame, circle, depth_intrin)
-            print(average)
+            # find depth of detected circle
+            average = circle_to_realworld(aligned_depth_frame, circle, depth_intrin)
 
-            # skip this loop if averaging failed
-            if(average == -1):
-                continue
-
-            # map circle coordinates to meters (approx)
-            (mappedX, mappedY), depthAvgScaled = mapCircleCoordinates(numpyDepth, (x,y), average, XYScaleFactor, ZScaleFactor)
-
-            # try to remove noise from data points
-            smoothedX = xAverager.addAndProc(mappedX)
-            smoothedY = yAverager.addAndProc(mappedY)
-            smoothedZ = zAverager.addAndProc(depthAvgScaled)
-
-            if(np.isnan(depthAvgScaled)):
-                depthAvgScaled = 10.0
+            # invert sign of y-point to align with standard cartesian
+            # views
+            average[1] = -1*average[1]
 
             # create PointStamped message and publish
             pointMessage = PointStamped()
             pointMessage.header.stamp = rospy.Time.now()
-            pointMessage.point.x = smoothedX
-            pointMessage.point.y = smoothedY
-            pointMessage.point.z = smoothedZ
+            pointMessage.point.x = average[0]
+            pointMessage.point.y = average[1]
+            pointMessage.point.z = average[2]
             pointPub.publish(pointMessage)
 
         # display images
-        cv2.imshow('Depth', numpyDepth)
+        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(numpyDepth, alpha=0.03), cv2.COLORMAP_JET)
+        cv2.imshow('Depth', depth_colormap)
         cv2.imshow('Video', numpyRGB)
         if(cv2.waitKey(1) & 0xFF == ord('q')):
             break
