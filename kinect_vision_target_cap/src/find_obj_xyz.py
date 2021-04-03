@@ -19,11 +19,9 @@ cv2.namedWindow('Depth')
 cv2.namedWindow('Video')
 
 # define various global variables
-pointPubTopic = "kinectXYZPoint"
+pointPubTopic = "/vision_target_xyz_point"
 lowerColorBound = (0, 187, 83)
 upperColorBound = (255, 255, 255)
-XYScaleFactor = 20
-ZScaleFactor = 50
 MIN_AREA = 100
 WINDOW_SIZE = 3
 
