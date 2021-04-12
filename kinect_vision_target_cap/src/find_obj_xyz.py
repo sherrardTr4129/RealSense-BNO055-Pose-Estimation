@@ -16,6 +16,7 @@ import pyrealsense2 as rs
 from geometry_msgs.msg import PointStamped
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
+from WindowedAverage import MovingWindowAverage
 
 cv2.namedWindow('Depth')
 cv2.namedWindow('Video')
@@ -156,6 +157,12 @@ def main():
     # create Point32 publisher
     pointPub = rospy.Publisher(pointPubTopic, PointStamped, queue_size=1)
 
+    # create moving average filters
+    WINDOW_SIZE = 4
+    moving_avg_x = MovingWindowAverage(WINDOW_SIZE)
+    moving_avg_y = MovingWindowAverage(WINDOW_SIZE)
+    moving_avg_z = MovingWindowAverage(WINDOW_SIZE)
+
     # Create a pipeline
     pipeline = rs.pipeline()
 
@@ -218,18 +225,22 @@ def main():
             cv2.circle(numpyRGB, (int(x), int(y)), int(radius), (0,255,0),2)
 
             # find depth of detected circle
-            average = circle_to_realworld(aligned_depth_frame, circle, depth_intrin)
+            reading = circle_to_realworld(aligned_depth_frame, circle, depth_intrin)
+
+            average_x = moving_avg_x.addAndProc(reading[0])
+            average_y = moving_avg_y.addAndProc(reading[1])
+            average_z = moving_avg_z.addAndProc(reading[2])
 
             # invert sign of y-point to align with standard cartesian
             # views
-            average[1] = -1*average[1]
+            average_y = -1*average_y
 
             # create PointStamped message and publish
             pointMessage = PointStamped()
             pointMessage.header.stamp = rospy.Time.now()
-            pointMessage.point.x = average[0]
-            pointMessage.point.y = average[1]
-            pointMessage.point.z = average[2]
+            pointMessage.point.x = average_x
+            pointMessage.point.y = average_y
+            pointMessage.point.z = average_z
             pointPub.publish(pointMessage)
 
         # publish color image
