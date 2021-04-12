@@ -14,16 +14,25 @@ import numpy as np
 import rospy
 import pyrealsense2 as rs
 from geometry_msgs.msg import PointStamped
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 cv2.namedWindow('Depth')
 cv2.namedWindow('Video')
 
 # define various global variables
 pointPubTopic = "/vision_target_xyz_point"
+visionTargetImage = "/visionTargetImage"
 lowerColorBound = (0, 187, 83)
 upperColorBound = (255, 255, 255)
 MIN_AREA = 100
 WINDOW_SIZE = 3
+
+# create CvBridge object for converting CV2 images to sensor_msgs/Image messages
+imgBridge = CvBridge()
+
+# create image publisher object
+imgPub = rospy.Publisher(visionTargetImage, Image, queue_size=1)
 
 def getDepth():
     """
@@ -222,6 +231,10 @@ def main():
             pointMessage.point.y = average[1]
             pointMessage.point.z = average[2]
             pointPub.publish(pointMessage)
+
+        # publish color image
+        imgMsg = imgBridge.cv2_to_imgmsg(numpyRGB, "bgr8")
+        imgPub.publish(imgMsg)
 
         # display images
         depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(numpyDepth, alpha=0.03), cv2.COLORMAP_JET)
