@@ -9,7 +9,7 @@ As mentioned, this system seeks to capture the position (x,y,z coordinates) of a
 ### Intel RealSense Position Capture
 The Intel RealSense position capture sub-system attempts to locate the vision target in a given RGB frame, and then attempts to extract the vision target's approximate depth and X,Y coordinates in the camera's coordinate frame. From here, these values are scaled and shifted accordingly and re-published to the rest of the system as a PointStamped message. Have a look at this sub-system's block diagram and a physical representation of the system components below. 
 
-![Kinect Sub-System Diagram](./documentation/images/kinectPosCapsubSystem.png)
+![Kinect Sub-System Diagram](./documentation/images/RealSensePosCapsubSystem.png)
 
 ### BNO055 Orientation Capture
 The BNO055 orientation capture sub-system attempts to determine the orientation of the vision target as a quaternion, and then wirelessly transmit said quaternion back to a base-station MCU. The base-station MCU then sends the quaternion to a ROS node running on a local computer via a serial interface. This ROS node processes the quaternion components and publishes it as a quaternionStamped message to the rest of the system. All designs (mechanical, electrical and firmware) needed to construct the wirless orientation capture sub-system can be found [here](https://github.com/sherrardTr4129/Kinect-BNO055-Pose-Estimation/tree/main/orientation_capture_subsystem_hardware_and_firmware). The overall sub-system block diagram, functional flowchart diagram, as well as a visual representation of the system can be seen in the figures below.
