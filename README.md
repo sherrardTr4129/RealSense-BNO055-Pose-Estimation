@@ -23,8 +23,8 @@ The BNO055 orientation capture sub-system attempts to determine the orientation 
 ## System Dependencies
 The various dependencies of the system can be seen in the following sub-sections.
 
-### Kinect Dependencies
-To run the kinect interfacing software in this repository, make sure to install the libfreenect library and python wrappers. Two bash scripts can be found [here](https://github.com/alwynmathew/libfreenect-with-python) that do exactly that.)
+### Intel RealSense Dependencies
+To run the Intel RealSense interfacing software generated in this project, make sure you have installed the [RealSense SDK 2](https://dev.intelrealsense.com/docs/compiling-librealsense-for-linux-ubuntu-guide) with python bindings.
 
 ### MCU Serial Interface Dependencies
 The wirelss orientation data reciever MCU serial ROS driver depends on the pyserial library for serial connectiviy. This library can be installed by running the following command in a terminal:
