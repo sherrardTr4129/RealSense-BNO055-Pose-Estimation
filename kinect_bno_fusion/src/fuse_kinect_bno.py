@@ -10,7 +10,7 @@ from geometry_msgs.msg import PointStamped, QuaternionStamped, Pose
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 
 # misc variables
-kinect_topic = "kinectXYZPoint"
+vision_target_xyz_topic = "/vision_target_xyz_point"
 bno_quat_topic = "bno055_quat"
 poseTopic = "fused_BNO_Kinect_Pose"
 queue = 10
@@ -42,7 +42,7 @@ def main():
     rospy.loginfo("kinect_bno_fusion_node started")
 
     # create subscribers
-    XYZ_sub = Subscriber(kinect_topic, PointStamped)
+    XYZ_sub = Subscriber(vision_target_xyz_topic, PointStamped)
     bno_quat_sub = Subscriber(bno_quat_topic, QuaternionStamped)
 
     # try to sync datastreams

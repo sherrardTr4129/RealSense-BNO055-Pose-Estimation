@@ -11,22 +11,29 @@
 import freenect
 import cv2
 import numpy as np
-import frame_convert2
 import rospy
+import pyrealsense2 as rs
 from geometry_msgs.msg import PointStamped
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 from WindowedAverage import MovingWindowAverage
 
 cv2.namedWindow('Depth')
 cv2.namedWindow('Video')
 
 # define various global variables
-pointPubTopic = "kinectXYZPoint"
+pointPubTopic = "/vision_target_xyz_point"
+visionTargetImage = "/visionTargetImage"
 lowerColorBound = (0, 187, 83)
 upperColorBound = (255, 255, 255)
-XYScaleFactor = 20
-ZScaleFactor = 50
 MIN_AREA = 100
 WINDOW_SIZE = 3
+
+# create CvBridge object for converting CV2 images to sensor_msgs/Image messages
+imgBridge = CvBridge()
+
+# create image publisher object
+imgPub = rospy.Publisher(visionTargetImage, Image, queue_size=1)
 
 def getDepth():
     """
@@ -114,99 +121,33 @@ def findMinEnclosingCircle(frame):
     else:
         return False, defaultCircle
 
-def findDepthAvg(depthImg, circle):
+def circle_to_realworld(depthImg, circle, depth_intrin):
     """
-    This function takes a given depth image from the kinect and the
-    detected circle center coordinates and radius and finds the average depth
-    value of the constructed circle mask.
+    This function takes a given depth image from the Intel RealSense camera
+    and the center point of the detected circle, and de-projects it into real
+    world points. 
 
     params:
-        depthImg (uint8 image): The depth image from the kinect
+        depthImg (depth frame): The depth image from the Intel RealSense
         circle ((int x, int y), int radius): the center point and radius of the detected circle
+        depth_intrin (depth intrinsics): Intrinsic paramters of the depth frame.
     returns:
-        averageDepth (int): the average depth value over the constructed circle mask
+        real_world_point (int): the real world point of the detected circle 
     """
     # construct ROI
     (x,y), radius = circle
     x=int(x)
     y=int(y)
     radius=int(radius)
-    circleRoi = depthImg[y-radius:y+radius, x-radius:x+radius]
 
-    # grab circle ROI height and width
-    w = circleRoi.shape[1]
-    h = circleRoi.shape[0]
+    # get depth value of circle center
+    depth = depthImg.get_distance(x, y)
 
-    # create circle mask
-    circleMask = np.zeros((w,h), circleRoi.dtype)
-    cv2.circle(circleMask, (int(w/2), int(h/2)), radius, (255,255,255), -1)
+    # perform deprojection
+    real_world_point = rs.rs2_deproject_pixel_to_point(depth_intrin, [x, y], depth)
 
-    # grab ROI and mask shape
-    circleROIShape = circleRoi.shape
-    circleMaskShape = circleMask.shape
+    return real_world_point
 
-    # check if the mask and ROI are the same shape
-    if(circleROIShape != circleMaskShape):
-        rospy.logerr("ROI and mask are not the same size!")
-        return -1
-
-    # isolate circle ROI in depth image
-    combined = cv2.bitwise_and(circleRoi, circleMask)
-
-    # compute average of non-black pixels on depth image
-    nonZeroIndecies = np.where(combined != 0)[0]
-    average = np.mean(combined[nonZeroIndecies])
-
-    return average
-
-def mapCircleCoordinates(numpyDepthFrame, circleCenter, depthAvg, XYScalingFactor, ZScalingFactor):
-    """
-    This function maps the detected circle center and average depth value to psudeo
-    real world values. This is done using the depth image geometry and arbritary scaling 
-    values. 
-
-    params:
-        numpyDepthFrame (uint8 image): the depth image from the kinect
-        circleCenter (int x, int y): the center of the detected circle
-        depthAvg (int avg): the average depth image value over the circle mask
-        XYScalingFactor (int): The number to scale the normalized X,Y coordinates by
-        ZScalingFactor (int): The number to scale the normalized Z coordinate by
-    returns:
-        circleScaled, depthAvgScaled ((int x, int y), int avg): the shifted and scaled circle
-                                                                center coordinates, and the scaled
-                                                                average depth value.
-    """
-    # grab shape of frame
-    w = numpyDepthFrame.shape[1]
-    h = numpyDepthFrame.shape[0]
-
-    # find image center
-    imgCx = int(w/2)
-    imgCy = int(h/2)
-
-    # extract center of circle
-    (circleX, circleY) = circleCenter
-
-    # map circle center to new coordinate system
-    circleCenterMappedX = circleX - imgCx
-    circleCenterMappedY = -(circleY - imgCy)
-
-    # scale circle coordinates to unit length
-    circleScaledX = circleCenterMappedX / (imgCx)
-    circleScaledY = circleCenterMappedY / (imgCy)
-
-    # scale up by sclaing factor
-    circleScaledX = circleScaledX * XYScalingFactor
-    circleScaledY = circleScaledY * XYScalingFactor
-    circleScaled = (circleScaledX, circleScaledY)
-
-    # scale depth average to range of 0-1
-    depthAvgScaled = depthAvg / 255
-
-    # scale depth by scaling factor
-    depthAvgScaled = depthAvgScaled * ZScalingFactor
-
-    return circleScaled, depthAvgScaled
 
 def main():
     # start node
@@ -216,19 +157,64 @@ def main():
     # create Point32 publisher
     pointPub = rospy.Publisher(pointPubTopic, PointStamped, queue_size=1)
 
-    # create windowed averager objects
-    xAverager = MovingWindowAverage(WINDOW_SIZE)
-    yAverager = MovingWindowAverage(WINDOW_SIZE)
-    zAverager = MovingWindowAverage(WINDOW_SIZE)
+    # create moving average filters
+    WINDOW_SIZE = 4
+    moving_avg_x = MovingWindowAverage(WINDOW_SIZE)
+    moving_avg_y = MovingWindowAverage(WINDOW_SIZE)
+    moving_avg_z = MovingWindowAverage(WINDOW_SIZE)
+
+    # Create a pipeline
+    pipeline = rs.pipeline()
+
+    # Create a config and configure the pipeline to stream
+    # different resolutions of color and depth streams
+    config = rs.config()
+
+    # Get device product line for setting a supporting resolution
+    pipeline_wrapper = rs.pipeline_wrapper(pipeline)
+    pipeline_profile = config.resolve(pipeline_wrapper)
+    device = pipeline_profile.get_device()
+    device_product_line = str(device.get_info(rs.camera_info.product_line))
+
+    # enable depth and color streams
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+
+    # Start streaming
+    profile = pipeline.start(config)
+
+    # Getting the depth sensor's depth scale (see rs-align example for explanation)
+    depth_sensor = profile.get_device().first_depth_sensor()
+    depth_scale = depth_sensor.get_depth_scale()
+
+    # Create an align object
+    # rs.align allows us to perform alignment of depth frames to others frames
+    # The "align_to" is the stream type to which we plan to align depth frames.
+    align_to = rs.stream.color
+    align = rs.align(align_to)
+
 
     while (not rospy.is_shutdown()):
-        # grab frames from kinect
-        depthImage = getDepth()
-        rgbImage = getRGB()
+        # grab frames from intel RealSense
+        frames = pipeline.wait_for_frames()
+        
+        # Align the depth frame to color frame
+        aligned_frames = align.process(frames)
+
+        # Get aligned frames
+        aligned_depth_frame = aligned_frames.get_depth_frame() # aligned_depth_frame is a 640x480 depth image
+        color_frame = aligned_frames.get_color_frame()
+
+        # get depth frame intrinsics
+        depth_intrin = aligned_depth_frame.profile.as_video_stream_profile().intrinsics
+
+        # Validate that both frames are valid
+        if not aligned_depth_frame or not color_frame:
+            continue
 
         # convert to numpy arrays
-        numpyRGB = np.array(rgbImage)
-        numpyDepth = np.array(depthImage)
+        numpyRGB = np.asanyarray(color_frame.get_data())
+        numpyDepth = np.asanyarray(aligned_depth_frame.get_data())
 
         # find min enclosing circle 
         status, circle = findMinEnclosingCircle(numpyRGB)
@@ -238,34 +224,32 @@ def main():
             (x,y), radius = circle
             cv2.circle(numpyRGB, (int(x), int(y)), int(radius), (0,255,0),2)
 
-            #find average depth of the pixels within the circle
-            average = findDepthAvg(numpyDepth, circle)
+            # find depth of detected circle
+            reading = circle_to_realworld(aligned_depth_frame, circle, depth_intrin)
 
-            # skip this loop if averaging failed
-            if(average == -1):
-                continue
+            average_x = moving_avg_x.addAndProc(reading[0])
+            average_y = moving_avg_y.addAndProc(reading[1])
+            average_z = moving_avg_z.addAndProc(reading[2])
 
-            # map circle coordinates to meters (approx)
-            (mappedX, mappedY), depthAvgScaled = mapCircleCoordinates(numpyDepth, (x,y), average, XYScaleFactor, ZScaleFactor)
-
-            # try to remove noise from data points
-            smoothedX = xAverager.addAndProc(mappedX)
-            smoothedY = yAverager.addAndProc(mappedY)
-            smoothedZ = zAverager.addAndProc(depthAvgScaled)
-
-            if(np.isnan(depthAvgScaled)):
-                depthAvgScaled = 10.0
+            # invert sign of y-point to align with standard cartesian
+            # views
+            average_y = -1*average_y
 
             # create PointStamped message and publish
             pointMessage = PointStamped()
             pointMessage.header.stamp = rospy.Time.now()
-            pointMessage.point.x = smoothedX
-            pointMessage.point.y = smoothedY
-            pointMessage.point.z = smoothedZ
+            pointMessage.point.x = average_x
+            pointMessage.point.y = average_y
+            pointMessage.point.z = average_z
             pointPub.publish(pointMessage)
 
+        # publish color image
+        imgMsg = imgBridge.cv2_to_imgmsg(numpyRGB, "bgr8")
+        imgPub.publish(imgMsg)
+
         # display images
-        cv2.imshow('Depth', numpyDepth)
+        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(numpyDepth, alpha=0.03), cv2.COLORMAP_JET)
+        cv2.imshow('Depth', depth_colormap)
         cv2.imshow('Video', numpyRGB)
         if(cv2.waitKey(1) & 0xFF == ord('q')):
             break

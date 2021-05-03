@@ -14,6 +14,8 @@ from geometry_msgs.msg import Pose
 # misc variables
 poseTopic = "fused_BNO_Kinect_Pose"
 gazeboServiceName = "/gazebo/set_model_state"
+y_offset = 1 # offset in meters of camera from floor
+scale_factor = 10
 
 def poseCallback(msg):
     """
@@ -33,9 +35,9 @@ def poseCallback(msg):
     # constuct modelState message from recieved pose
     stateMsg = ModelState()
     stateMsg.model_name = "simpleBox"
-    stateMsg.pose.position.x = msg.position.z
-    stateMsg.pose.position.y = msg.position.x
-    stateMsg.pose.position.z = msg.position.y
+    stateMsg.pose.position.x = msg.position.z * scale_factor
+    stateMsg.pose.position.y = msg.position.x * scale_factor
+    stateMsg.pose.position.z = (msg.position.y + y_offset) * scale_factor
     stateMsg.pose.orientation.x = msg.orientation.x
     stateMsg.pose.orientation.y = msg.orientation.y
     stateMsg.pose.orientation.z = msg.orientation.z
