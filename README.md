@@ -1,4 +1,4 @@
-# Kinect-BNO055-Pose-Estimation
+# RealSense-BNO055-Pose-Estimation
 This repository contains required software to construct a Pose of a vision target by fusing its x,y,z coordinates from the kinect, with its quaternion orientation from the BNO055 sensor.
 
 ## System Description
@@ -6,8 +6,8 @@ As mentioned, this system seeks to capture the position (x,y,z coordinates) of a
 
 ![Overall System Diagram](./documentation/images/TotalSystemDiagram.png)
 
-### Kinect Position Capture
-The kinect position capture sub-system attempts to locate the vision target in a given RGB frame, and then attempts to extract the vision target's approximate depth and X,Y coordinates in the camera's coordinate frame. From here, these values are scaled and shifted accordingly and re-published to the rest of the system as a PointStamped message. Have a look at this sub-system's block diagram and a physical representation of the system components below. 
+### Intel RealSense Position Capture
+The Intel RealSense position capture sub-system attempts to locate the vision target in a given RGB frame, and then attempts to extract the vision target's approximate depth and X,Y coordinates in the camera's coordinate frame. From here, these values are scaled and shifted accordingly and re-published to the rest of the system as a PointStamped message. Have a look at this sub-system's block diagram and a physical representation of the system components below. 
 
 ![Kinect Sub-System Diagram](./documentation/images/kinectPosCapsubSystem.png)
 
