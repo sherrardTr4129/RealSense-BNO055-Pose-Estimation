@@ -2,7 +2,7 @@
 This repository contains required software to construct a Pose of a vision target by fusing its x,y,z coordinates from the Intel RealSense depth camera, with its quaternion orientation from the BNO055 sensor.
 
 ## System Description
-As mentioned, this system seeks to capture the position (x,y,z coordinates) of a vision target using a Kinect, while capturing it's orientation as a quaternion using a BNO055 sensor. These two data streams are combined into a 6-DOF pose using an approximate time synchornization technique. This system has a multitude of uses in the problem domain of human-robot interaction. Some of these applications include the generation of end-effector goal poses for a "mimic-me" teleoperation robot arm, or potentially the generation of entire arm trajectories for a robot arm to follow. Please have a look at the high-level system block diagram below.
+As mentioned, this system seeks to capture the position (x,y,z coordinates) of a vision target using an Intel RealSense depth camera, while capturing it's orientation as a quaternion using a BNO055 sensor. These two data streams are combined into a 6-DOF pose using an approximate time synchornization technique. This system has a multitude of uses in the problem domain of human-robot interaction. Some of these applications include the generation of end-effector goal poses for a "mimic-me" teleoperation robot arm, or potentially the generation of entire arm trajectories for a robot arm to follow. Please have a look at the high-level system block diagram below.
 
 ![Overall System Diagram](./documentation/images/TotalSystemDiagram_RealSense.png)
 
