@@ -39,7 +39,7 @@ Both the transmitter module and reciever module depend on the NRF24 library that
 ## Usage
 This repository contains three distinct ROS packages that are described in more detail below. 
 
-To launch both the kinect position capture node, BNO055 serial ROS driver, and sensor data stream fusion node, run the following in a terminal:
+To launch both the Intel RealSense depth camera position capture node, BNO055 serial ROS driver, and sensor data stream fusion node, run the following in a terminal:
 ```bash
 roslaunch kinect_bno_fusion kinect_bno_fusion_bringup.launch
 ```
