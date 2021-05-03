@@ -4,7 +4,7 @@ This repository contains required software to construct a Pose of a vision targe
 ## System Description
 As mentioned, this system seeks to capture the position (x,y,z coordinates) of a vision target using a Kinect, while capturing it's orientation as a quaternion using a BNO055 sensor. These two data streams are combined into a 6-DOF pose using an approximate time synchornization technique. This system has a multitude of uses in the problem domain of human-robot interaction. Some of these applications include the generation of end-effector goal poses for a "mimic-me" teleoperation robot arm, or potentially the generation of entire arm trajectories for a robot arm to follow. Please have a look at the high-level system block diagram below.
 
-![Overall System Diagram](./documentation/images/TotalSystemDiagram.png)
+![Overall System Diagram](./documentation/images/TotalSystemDiagram_RealSense.png)
 
 ### Intel RealSense Position Capture
 The Intel RealSense position capture sub-system attempts to locate the vision target in a given RGB frame, and then attempts to extract the vision target's approximate depth and X,Y coordinates in the camera's coordinate frame. From here, these values are scaled and shifted accordingly and re-published to the rest of the system as a PointStamped message. Have a look at this sub-system's block diagram and a physical representation of the system components below. 
