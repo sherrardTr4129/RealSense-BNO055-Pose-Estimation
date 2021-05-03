@@ -3,6 +3,7 @@ This repository contains required software to construct a Pose of a vision targe
 
 ## Demo Video
 Have a look at the youtube video below to see the system in action!
+
 [![](http://img.youtube.com/vi/9gSyu7mS7qo/0.jpg)](http://www.youtube.com/watch?v=9gSyu7mS7qo "Wireless 6-DOF Pose Capture System")
 
 ## System Description
